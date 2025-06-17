@@ -182,11 +182,13 @@ def optimal_lag_selection(data, max_lags_y, max_lags_x):
     return [combinations[AIC_opt], combinations[BIC_opt]]
 
 
-# Import data sample
-csv_file_path = "sample.csv"
-df = pd.read_csv(csv_file_path)
-data = df.copy()
 
-# Evaluation of sample data with a maximum of 4 lags in y and x
+
+# Import data sample 1
+csv_file_path = "sample.csv"
+df_1 = pd.read_csv(csv_file_path)
+
+
+data_1 = df_1.copy()
 max_lags_y, max_lags_x = 4,4
-optimal_lag_selection(data, max_lags_y, max_lags_x)
+optimal_lag_selection(data_1, max_lags_y, max_lags_x)
