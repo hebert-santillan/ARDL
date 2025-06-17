@@ -1,4 +1,4 @@
-# Autoselection of optimal lag selection 
+# Automatic lag selection in ARDL models
 
 This repository provides a Python implementation of an algorithm for **automatic lag selection in Autoregressive Distributed Lag (ARDL) models**. The tool evaluates all possible combination of lag selection and returns the optimal lag selection with AIC and BIC. The tool is designed to assist on research in identifying the optimal lag structure for ARDL models, facilitating time series analysis and econometric modeling. 
 
