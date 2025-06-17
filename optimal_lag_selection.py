@@ -181,7 +181,7 @@ def optimal_lag_selection(data, max_lags_y, max_lags_x):
     # Returns arrays of optimal lags [AIC, BIC]
     return [combinations[AIC_opt], combinations[BIC_opt]]
 
-
+### Example ###
 import os
 filepath = __file__
 directory_path = os.path.dirname(__file__)
