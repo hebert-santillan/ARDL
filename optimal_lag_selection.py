@@ -182,11 +182,12 @@ def optimal_lag_selection(data, max_lags_y, max_lags_x):
     return [combinations[AIC_opt], combinations[BIC_opt]]
 
 
-
-
+import os
+filepath = __file__
+directory_path = os.path.dirname(__file__)
 # Import data sample 1
 csv_file_path = "sample.csv"
-df_1 = pd.read_csv(csv_file_path)
+df_1 = pd.read_csv(os.path.join(directory_path,csv_file_path))
 
 
 data_1 = df_1.copy()
