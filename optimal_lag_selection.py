@@ -46,7 +46,7 @@ def criterium(N, M, SSE):
 
     return ([AIC_b, BIC_b])
 
-def ols_model2(y, x): 
+def ols_model(y, x): 
     """
     Fit an OLS model and return the model along with the SSE (not adjusted for degrees of freedom)
     """
@@ -120,14 +120,12 @@ def optimal_lag_selection(data, max_lags_y, max_lags_x):
         # name of columns
         reg_headers = []
         
-        # numero de columnas
+        # column number
         n_columns = sum(combination) + m
-        
-        # creando martriz vacia
+    
         reg_matrix = np.full((n, n_columns), np.nan)
                 
         i = 0
-        # creando contador de columnas en cero
         for pos, lags in enumerate(combination):
             header = headers[pos]
             for lag in range(lags+1):
@@ -142,12 +140,12 @@ def optimal_lag_selection(data, max_lags_y, max_lags_x):
         y = reg_matrix[:,0]
         x = reg_matrix[:,1:]
 
-        model, SSE = ols_model2(y, x)
+        model, SSE = ols_model(y, x)
 
         N = reg_matrix.shape[0]
         M = reg_matrix.shape[1]
 
-        AIC, BIC = criterium2(N, M, SSE)
+        AIC, BIC = criterium(N, M, SSE)
         
         AIC_list.append(AIC)
         BIC_list.append(BIC)
@@ -169,7 +167,7 @@ def optimal_lag_selection(data, max_lags_y, max_lags_x):
     
     
     df_AIC_opt = pd.DataFrame(reg_matrix_opt_AIC, columns = reg_headers_list[AIC_opt])
-    print (ols_model2(df_AIC_opt.iloc[:,0], df_AIC_opt.iloc[:,1:])[0].summary())
+    print (ols_model(df_AIC_opt.iloc[:,0], df_AIC_opt.iloc[:,1:])[0].summary())
     
     # Print BIC results
     print("########## BIC ##########")
@@ -178,7 +176,17 @@ def optimal_lag_selection(data, max_lags_y, max_lags_x):
     print("BIC: " + str(BIC_list[BIC_opt]))
     
     df_BIC_opt = pd.DataFrame(reg_matrix_opt_BIC, columns = reg_headers_list[BIC_opt])
-    print (ols_model2(df_BIC_opt.iloc[:,0], df_BIC_opt.iloc[:,1:])[0].summary())
+    print (ols_model(df_BIC_opt.iloc[:,0], df_BIC_opt.iloc[:,1:])[0].summary())
     
     # Returns arrays of optimal lags [AIC, BIC]
     return [combinations[AIC_opt], combinations[BIC_opt]]
+
+
+# Import data sample
+csv_file_path = "sample.csv"
+df = pd.read_csv(csv_file_path)
+data = df.copy()
+
+# Evaluation of sample data with a maximum of 4 lags in y and x
+max_lags_y, max_lags_x = 4,4
+optimal_lag_selection(data, max_lags_y, max_lags_x)
