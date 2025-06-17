@@ -22,4 +22,4 @@ The algorithm was developed and tested using the following versions:
 - data: DataFrame where the first column contains the endogenous variable, and the second column onward contain the exogenous variables.
 
 ## Output
-- 
+- Array with optimal selection using the AIC and BIC.
