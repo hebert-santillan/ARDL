@@ -11,9 +11,6 @@ def lag_grid(num_vars_x, max_lag_y, max_lag_x):
     # Posible lags for x
     lags_x = [np.arange(0, max_lag_x + 1) for i in range(num_vars_x)]
     
-    # Number of X combinations
-    shapes = [len(lag) for lag in lags_x]
-    
     # Create lag grids for X variables
     grids = np.meshgrid(*lags_x, indexing='ij')
     
