@@ -183,8 +183,7 @@ def optimal_lag_selection(data, max_lags_y, max_lags_x):
 
 ### Example ###
 import os
-filepath = __file__
-directory_path = os.path.dirname(__file__)
+directory_path = os.path.abspath('')
 # Import data sample 1
 csv_file_path = "sample.csv"
 df_1 = pd.read_csv(os.path.join(directory_path,csv_file_path))
