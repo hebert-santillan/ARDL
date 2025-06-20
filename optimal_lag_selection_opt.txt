@@ -50,14 +50,36 @@ def ols_model(y, x):
     """
     Fit an OLS model and return the model along with the SSE (not adjusted for degrees of freedom)
     """
-    x = sm.add_constant(x)
     model = sm.OLS(y, x).fit()
 
     y_pred = model.predict(x)
     ehat = y - y_pred
     SSE = np.sum(ehat ** 2)
 
-    return [model, SSE]
+    return (SSE)
+
+def alt_ols_model (y,x):
+    w = np.linalg.inv(x.T @ x) @ x.T @ y
+
+    # Step 2: Predict y using the model
+    y_pred = x @ w
+    
+    # Step 3: Calculate SSE
+    sse = np.sum((y - y_pred) ** 2)
+    
+    return (sse)
+
+def fst_ols_model (y,x):
+    # Add intercept column (ones)
+    w, residuals, rank, s = np.linalg.lstsq(x, y, rcond=None)
+
+    # Predict
+    y_pred =x @ w
+
+    # SSE: sum of squared errors
+    sse = np.sum((y - y_pred) ** 2)
+
+    return (sse)
 
 def optimal_lag_selection(data, max_lags_y, max_lags_x):
     # Get headers
@@ -112,17 +134,74 @@ def optimal_lag_selection(data, max_lags_y, max_lags_x):
             
     # Combinations of posible optimal lags        
     combinations = lag_grid(data.shape[1]-1,max_lags_y,max_lags_x)
+        
+    # df1 = pd.DataFrame(lagged_matrix,columns=lagged_headers)
+    # pprint (df1)
     
-    #[position*max_lags_x + lag for lag in range(0,lags+1) for lags in combination for position, combination in enumerate(combinations)]
+    # df1.to_csv('filename.csv', index=False)
+
+    
+    lags_index_x = [
+    [lag_x * m + position_x+ max_lags_y+1# + "-" + str(position_x) + "-" + str(combination)
+     for position_x, lags_x in enumerate(combination[1:])
+     for lag_x in range(lags_x + 1)]
+    for combination in combinations
+    ]
     
     
-    [print (str(lag_x*(m+1)+position) + "-"+str(position)+ "-"+str(combination))
-     for combination in combinations
-     for position, lags_x in enumerate(combination[1:])
-     for lag_x in range(lags_x+1)]
-                        
+    # [print (str(lag_x*(m)+position_x) + "-"+str(position_x)+ "-"+str(combination))
+    #  for combination in combinations
+    #  for position_x, lags_x in enumerate(combination[1:])
+    #  for lag_x in range(lags_x+1)]
+    
+    lags_index_y = [
+    [lag_y# + "-" + str(combination)
+     for lag_y in range(combination[0] + 1)]
+    for combination in combinations
+    ]
+    
+    
+    lags_index = lags_index_y
+    [lags_index[position].extend(lags_index_x )for position, lags_index_x in enumerate(lags_index_x)]
+    t1n = 0
+    for position, index in enumerate(lags_index):
+        reg_matrix = lagged_matrix[:,index]
+        reg_matrix = reg_matrix[~np.isnan(reg_matrix).any(axis=1)]
+
+        
+        y = reg_matrix[:,0]
+        x = reg_matrix[:,1:]
+        
+        t11 = time.time()
+        
+        
+
+        alt_ols_model(y, x)
+        
+        
+        t12 = time.time()
+        t1n += t12-t11
+    print (t1n)
+        
+
+    # selected_headers = sorted([lagged_headers [int(i)] for i in optimal_index])
+    # df_text = pd.DataFrame(optimal_reg_matrix, columns=selected_headers)
+        
+        
+        
+        
+        
+        
+        
+            # flattened_result = [item for lags_index_y in result for item in lags_index_x]
+
+    
+    # [print (str(lag_y)+"-"+str(combination))
+    #   for combination in combinations
+    #   for lag_y in range(combination[0]+1)]
             
-            
+    #index = [a + b for a, b in zip(lags_index_x, lags_index_y)]
+
             
     
     
@@ -207,10 +286,6 @@ def optimal_lag_selection(data, max_lags_y, max_lags_x):
         
         
         
-    # #     y = reg_matrix[:,0]
-    # #     x = reg_matrix[:,1:]
-
-    # #     model, SSE = ols_model(y, x)
 
     # #     N = reg_matrix.shape[0]
     # #     M = reg_matrix.shape[1]
@@ -261,7 +336,13 @@ def optimal_lag_selection(data, max_lags_y, max_lags_x):
 
 # data_1 = df_1.copy()
 # max_lags_y, max_lags_x = 4,4
-# optimal_lag_selection(data_1, max_lags_y, max_lags_x)
+
+# t1 = time.time()
+
+# # optimal_lag_selection(data_1, max_lags_y, max_lags_x)
+# t2 = time.time()
+
+# print ("Tiempo de t2-t1: " + str(t2-t1))
 
 
 # ### Data Marco ###
@@ -273,8 +354,8 @@ df = pd.read_excel(url, sheet_name = 'Demanda_dinero', index_col = 0)
 t1 = time.time()
 
 data_2 = df.copy()
-max_lags_y, max_lags_x = 1,1
-optimal_lag_selection(data_2.iloc[:,:4], max_lags_y, max_lags_x)
+max_lags_y, max_lags_x = 4,4
+optimal_lag_selection(data_2, max_lags_y, max_lags_x)
 
 t2 = time.time()
 
