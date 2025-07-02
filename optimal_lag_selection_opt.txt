@@ -2,36 +2,102 @@ import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 import time 
+import itertools
 from pprint import pprint
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+def de (num_vars_x, max_lag_y, max_lag_x):
 
-def lag_grid(num_vars_x, max_lag_y, max_lag_x):
+    # for lag in range(max_lag_x+1):
+    elements = [[1]*lag + [0]*(max_lag_x-lag) for lag in range(max_lag_x + 1)]
+        
+    
+    grid = list(itertools.permutations(i,3))
+    
+    # grid = list(itertools.permutations(i,3))
+    pprint (grid)
+    
+        
+    # # --- Valid blocks ---
+    # # For each block: possible k = 0..max_lag_x
+    # lengths = np.arange(max_lag_x + 1)  # [0,1,...,max_lag_x]
+    
+    # # Build blocks: shape (max_lag_x + 1, max_lag_x)
+    # blocks = np.zeros((max_lag_x + 1, max_lag_x), dtype=int)
+    # for i, k in enumerate(lengths):
+    #     blocks[i, :k] = 1
+    
+    # # Make meshgrid for all sets
+    # # For num_vars_x sets, build all possible index combinations
+    # grids = np.meshgrid(*([lengths] * num_vars_x), indexing='ij')
+    
+    # # Flatten to (num_combinations, num_vars_x)
+    # indices = np.stack([g.ravel() for g in grids], axis=-1)
+    
+    # # Build the final matrix
+    # num_combinations = indices.shape[0]
+    # row_length = num_vars_x * max_lag_x
+    # matrix = np.zeros((num_combinations, row_length), dtype=int)
+    
+    # # Fill each block in each row
+    # for block_idx in range(num_vars_x):
+    #     start = block_idx * max_lag_x
+    #     end = start + max_lag_x
+    #     matrix[:, start:end] = blocks[indices[:, block_idx]]
 
-     # Posible lags for y
-    lags_y = np.arange(1, max_lag_y + 1)
+    return (grid)
+
+def lag_grid (num_vars_x, max_lag_y, max_lag_x):
+    
+    max_lag = max(max_lag_x, max_lag_y)
+    
+    elements = [[1]*lag + [0]*(max_lag-lag) for lag in range(max_lag + 1)]
+      # Posible lags for y
+    lags_y = elements[1:]
+    # lags_y = np.arange(1, max_lag_y + 1)
     
     # Posible lags for x
-    lags_x = [np.arange(0, max_lag_x + 1) for i in range(num_vars_x)]
+    lags_x = [[elements[i] for i in np.arange(1, max_lag_x + 1)] for i in range(num_vars_x)]
     
-    # Number of X combinations
+    grid = [list(p) for p in itertools.product(elements, repeat=num_vars_x)]
     
-    # Create lag grids for X variables
-    grids = np.meshgrid(*lags_x, indexing='ij')
+    combinations = [np.array (row).flatten() for row in grid]
+    # # combinations = [itertools.chain(row) for row in grid]
+    # # combinations = [list(row) for row in grid]
+    # combinations = [list(itertools.chain.from_iterable(row)) for row in itertools.product(elements, repeat=num_vars_x)]
     
-    # Flatten and combine
-    X_combinations = np.stack([g.flatten() for g in grids], axis=-1)
-    
-    # Stack results
-    result = []
-    for y_lag in lags_y:
-        y_column = np.full((X_combinations.shape[0], 1), y_lag)
-        combo = np.hstack([y_column, X_combinations])
-        result.append(combo)
-    
-    grid = np.vstack(result)
-    return grid
 
+    return (combinations)
+
+def lag_grid2(num_vars_x, max_lag_y, max_lag_x):
+    max_lag = max(max_lag_x, max_lag_y)
+
+    elements_list = []
+    for lag in range(max_lag + 1):
+        arr = np.zeros(max_lag, dtype=int)
+        if lag > 0:
+            arr[:lag] = 1
+        elements_list.append(arr)
+    elements = np.array(elements_list)
+
+    lags_y = elements[1:] 
+
+    if num_vars_x == 1:
+        grid_np = elements
+    else:
+        product_arrays = [elements for _ in range(num_vars_x)]
+        
+        indices_range = np.arange(len(elements))
+        
+        meshgrid_indices = np.array(np.meshgrid(*[indices_range for _ in range(num_vars_x)], indexing='ij'))
+        
+        grid_indices_flat = meshgrid_indices.reshape(num_vars_x, -1).T
+        
+        grid_np = elements[grid_indices_flat]
+    
+    combinations = grid_np.reshape(-1, num_vars_x * max_lag)
+    
+    return combinations
 def criterium(N, M, SSE): 
     """
     Evaluate a model according to the Akaike and Bayesian information criteria
@@ -268,46 +334,63 @@ def optimal_lag_selection(data, max_lags_y, max_lags_x):
     print (pd.DataFrame(lagged_matrix, columns = lagged_headers))
        
     # Combinations of posible optimal lags        
-    combinations = lag_grid(data.shape[1]-1,max_lags_y,max_lags_x)
+    combinations = lag_grid2(data.shape[1]-1, max_lags_y, max_lags_x)
+    
+    print (pd.DataFrame(combinations))
+    n = min (lagged_matrix.shape[0], lagged_matrix.shape[1])
+    for position, combination in enumerate (combinations):
+        if position == 0:
+                
+            # identity_matrix = np.zeros((n,n))
+            
+            # np.fill_diagonal (identity_matrix, combination)
+            
+            # C = lagged_matrix @ identity_matrix
+            results = lagged_matrix[:,combination]
+            # print (pd.DataFrame(results))
+        
+        
+        
+    
+#     return
+
+# #    q = lags_index_mt (combinations, max_lags_x,min(32, (os.cpu_count() or 1) + 4))
+    
+#     for i in range ((max_lags_x+1)**6*(max_lags_y)):
+#         lagged_matrix = np.hstack((lagged_matrix, lagged_matrix_x))
+#     return lagged_matrix
+#     # lags_index_y = [
+#     # [lag_y# + "-" + str(combination)
+#     #  for lag_y in range(combination[0] + 1)]
+#     # for combination in combinations
+#     # ]
+    
+#     # # create index    
+#     # lags_index = lags_index_y
+#     # [lags_index[position].extend(lags_index_x ) for position, lags_index_x in enumerate(lags_index_x)]
     
     
-#    q = lags_index_mt (combinations, max_lags_x,min(32, (os.cpu_count() or 1) + 4))
-    
-    for i in range ((max_lags_x+1)**6*(max_lags_y)):
-        lagged_matrix = np.hstack((lagged_matrix, lagged_matrix_x))
-    return lagged_matrix
-    # lags_index_y = [
-    # [lag_y# + "-" + str(combination)
-    #  for lag_y in range(combination[0] + 1)]
-    # for combination in combinations
-    # ]
-    
-    # # create index    
-    # lags_index = lags_index_y
-    # [lags_index[position].extend(lags_index_x ) for position, lags_index_x in enumerate(lags_index_x)]
     
     
-    
-    
-    for position, index in enumerate(lags_index):
-        reg_matrix = lagged_matrix[:,index]
-        reg_matrix = reg_matrix[~np.isnan(reg_matrix).any(axis=1)]
+#     for position, index in enumerate(lags_index):
+#         reg_matrix = lagged_matrix[:,index]
+#         reg_matrix = reg_matrix[~np.isnan(reg_matrix).any(axis=1)]
         
-        # t11 = time.time()
+#         # t11 = time.time()
         
-        # # y = reg_matrix[:,0]
-        # # x = reg_matrix[:,1:]
+#         # # y = reg_matrix[:,0]
+#         # # x = reg_matrix[:,1:]
         
         
         
         
-        # sse_results = alt_ols_model(y, x)
+#         # sse_results = alt_ols_model(y, x)
         
         
         
-        # t12 = time.time()
-        # t1n += t12-t11
-    # print (t1n)
+#         # t12 = time.time()
+#         # t1n += t12-t11
+#     # print (t1n)
         
 # ### Data Marco ###
 import os
@@ -318,11 +401,11 @@ df = pd.read_excel(url, sheet_name = 'Demanda_dinero', index_col = 0)
 t1 = time.time()
 
 data_2 = df.copy()
+pprint (data_2)
+
 max_lags_y, max_lags_x = 4, 4
 lagged_matrix = optimal_lag_selection(data_2, max_lags_y, max_lags_x)
 
 t2 = time.time()
 
 print ("Tiempo de t2-t1: " + str(t2-t1))
-
-print (lagged_matrix.shape[0])
