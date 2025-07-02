@@ -6,98 +6,105 @@ import itertools
 from pprint import pprint
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-def de (num_vars_x, max_lag_y, max_lag_x):
 
-    # for lag in range(max_lag_x+1):
-    elements = [[1]*lag + [0]*(max_lag_x-lag) for lag in range(max_lag_x + 1)]
-        
+# # def lag_grid (num_vars_x, max_lag_y, max_lag_x):
     
-    grid = list(itertools.permutations(i,3))
+#     max_lag = max(max_lag_x, max_lag_y)
     
-    # grid = list(itertools.permutations(i,3))
-    pprint (grid)
+#       # Posible lags for y
+#     lags_y = elements[1:]
+#     # lags_y = np.arange(1, max_lag_y + 1)
     
-        
-    # # --- Valid blocks ---
-    # # For each block: possible k = 0..max_lag_x
-    # lengths = np.arange(max_lag_x + 1)  # [0,1,...,max_lag_x]
+#     # Posible lags for x
+#     lags_x = [[elements[i] for i in np.arange(1, max_lag_x + 1)] for i in range(num_vars_x)]
     
-    # # Build blocks: shape (max_lag_x + 1, max_lag_x)
-    # blocks = np.zeros((max_lag_x + 1, max_lag_x), dtype=int)
-    # for i, k in enumerate(lengths):
-    #     blocks[i, :k] = 1
+#     grid = [list(p) for p in itertools.product(elements, repeat=num_vars_x)]
     
-    # # Make meshgrid for all sets
-    # # For num_vars_x sets, build all possible index combinations
-    # grids = np.meshgrid(*([lengths] * num_vars_x), indexing='ij')
-    
-    # # Flatten to (num_combinations, num_vars_x)
-    # indices = np.stack([g.ravel() for g in grids], axis=-1)
-    
-    # # Build the final matrix
-    # num_combinations = indices.shape[0]
-    # row_length = num_vars_x * max_lag_x
-    # matrix = np.zeros((num_combinations, row_length), dtype=int)
-    
-    # # Fill each block in each row
-    # for block_idx in range(num_vars_x):
-    #     start = block_idx * max_lag_x
-    #     end = start + max_lag_x
-    #     matrix[:, start:end] = blocks[indices[:, block_idx]]
-
-    return (grid)
-
-def lag_grid (num_vars_x, max_lag_y, max_lag_x):
-    
-    max_lag = max(max_lag_x, max_lag_y)
-    
-    elements = [[1]*lag + [0]*(max_lag-lag) for lag in range(max_lag + 1)]
-      # Posible lags for y
-    lags_y = elements[1:]
-    # lags_y = np.arange(1, max_lag_y + 1)
-    
-    # Posible lags for x
-    lags_x = [[elements[i] for i in np.arange(1, max_lag_x + 1)] for i in range(num_vars_x)]
-    
-    grid = [list(p) for p in itertools.product(elements, repeat=num_vars_x)]
-    
-    combinations = [np.array (row).flatten() for row in grid]
-    # # combinations = [itertools.chain(row) for row in grid]
-    # # combinations = [list(row) for row in grid]
-    # combinations = [list(itertools.chain.from_iterable(row)) for row in itertools.product(elements, repeat=num_vars_x)]
+#     combinations = [np.array (row).flatten() for row in grid]
+#     # # combinations = [itertools.chain(row) for row in grid]
+#     # # combinations = [list(row) for row in grid]
+#     # combinations = [list(itertools.chain.from_iterable(row)) for row in itertools.product(elements, repeat=num_vars_x)]
     
 
-    return (combinations)
+#     return (combinations)
 
 def lag_grid2(num_vars_x, max_lag_y, max_lag_x):
+    max_lag_x += 1
+    max_lag_y += 1
+
     max_lag = max(max_lag_x, max_lag_y)
 
-    elements_list = []
-    for lag in range(max_lag + 1):
-        arr = np.zeros(max_lag, dtype=int)
-        if lag > 0:
-            arr[:lag] = 1
-        elements_list.append(arr)
-    elements = np.array(elements_list)
-
-    lags_y = elements[1:] 
-
+    print ("### Elements ###")    
+    elements = np.array([[True]*lag + [False]*(max_lag-lag) for lag in range(1,max_lag+1)])
+    print (elements)
+    
     if num_vars_x == 1:
         grid_np = elements
     else:
-        product_arrays = [elements for _ in range(num_vars_x)]
+        # product_arrays = [elements for _ in range(num_vars_x)]
         
-        indices_range = np.arange(len(elements))
+        indices_range = np.arange(max_lag_x)
         
         meshgrid_indices = np.array(np.meshgrid(*[indices_range for _ in range(num_vars_x)], indexing='ij'))
         
         grid_indices_flat = meshgrid_indices.reshape(num_vars_x, -1).T
         
         grid_np = elements[grid_indices_flat]
+        print (grid_np)
     
-    combinations = grid_np.reshape(-1, num_vars_x * max_lag)
+    combinations_x = grid_np.reshape(-1, num_vars_x * max_lag)
+    # for lag_y in range (max_lag_y)
+    # combinations = np.meshgrid (combinations_x,max_lag_y)
     
-    return combinations
+    return (combinations_x)
+
+def lag_grid3(num_vars_x, max_lag_y, max_lag_x):
+    max_lag_x += 1
+    max_lag_y += 1
+
+    max_lag = max(max_lag_x, max_lag_y)
+
+    print ("### Elements ###")    
+    elements = np.array([[True]*lag + [False]*(max_lag-lag) for lag in range(1,max_lag+1)])
+    print (elements)
+    
+    if num_vars_x == 1:
+        grid_np = elements
+    else:
+        # product_arrays = [elements for _ in range(num_vars_x)]
+        
+        indices_range_x = np.arange(max_lag_x)
+        # print ("##### index")
+        # print (indices_range)
+        meshgrid_indices_x = np.array(np.meshgrid(*[indices_range_x for _ in range(num_vars_x)], indexing='ij'))
+        # print (meshgrid_indices)
+        grid_indices_flat_x = meshgrid_indices_x.reshape(num_vars_x, -1).T
+        print ("### x ###")
+
+        grid_indices_flat_x_repeat = np.repeat(grid_indices_flat_x, repeats=(max_lag_y-1), axis=0)
+        print (pd.DataFrame(grid_indices_flat_x_repeat))
+        
+        grid_indices_flat_y =  np.array(np.tile(np.arange(1, max_lag_y), (max_lag_x)**num_vars_x)).reshape(-1, 1)
+        grid_indices_flat = np.hstack([grid_indices_flat_y, grid_indices_flat_x_repeat])
+        grid_np = elements[grid_indices_flat]
+        grid_np_2d = grid_np.reshape(grid_np.shape[0], -1)  
+        pprint (pd.DataFrame(grid_np_2d))
+        
+        print ("### y ###")
+        print (pd.DataFrame(grid_indices_flat_y))
+        
+        
+        # grid_indices_flat = np.hstack([
+        #     grid_indices_flat_y,
+        #     np.repeat(grid_indices_flat_x, repeats=(max_lag_y-1), axis=0)
+        #     ])       
+        # print ("### flat ###")
+        # print (pd.DataFrame(grid_indices_flat))
+        
+        combinations = elements[grid_indices_flat].reshape(-1, (max_lag_x+1)*num_vars_x+max_lag_y)
+
+    
+    return (combinations)
 def criterium(N, M, SSE): 
     """
     Evaluate a model according to the Akaike and Bayesian information criteria
@@ -137,138 +144,7 @@ def alt_ols_model (y,x):
     
     return (sse)
 
-def fst_ols_model (y,x):
-    # Add intercept column (ones)
-    w, residuals, rank, s = np.linalg.lstsq(x, y, rcond=None)
 
-    # Predict
-    y_pred =x @ w
-
-    # SSE: sum of squared errors
-    sse = np.sum((y - y_pred) ** 2)
-
-    return (sse)
-
-
-def lags_index_fst (combinations, max_lags_x):
-    combinations = np.array(combinations)
-    num_combos = combinations.shape[0]
-    results = []
-
-    for combo_i in range(num_combos):
-        combo = combinations[combo_i]
-        indices = []
-
-        for pos_x, lags_x in enumerate(combo[1:]):
-            base = (max_lags_x + 1) * pos_x
-            lag_x_vals = np.arange(lags_x + 1)
-            full_index = base + lag_x_vals
-            formatted = [f"{idx}-{pos_x}-{tuple(combo)}" for idx in full_index]
-            indices.extend(formatted)
-
-        results.append(indices)
-
-    return results
-
-def compute_lags_index_x(combinations, max_lags_x):
-    lags_index_x = []
-    for comb in combinations:
-        pos = np.arange(len(comb) - 1)
-        lags = comb[1:]
-        for p, l in zip(pos, lags):
-            lags_index_x.extend(max_lags_x * p + np.arange(l + 1))
-    return lags_index_x
-
-##############
-def lags_index (combinations, max_lag_x):
-    lags_index_x = [
-    [str((max_lags_x+1) * position_x + lag_x) + "-" + str(position_x) + "-" + str(combination)
-      for position_x, lags_x in enumerate(combination[1:])
-      for lag_x in range(lags_x + 1)]
-    for combination in combinations
-    ]  
-    
-    return lags_index_x
-###############
-def lags_index_2(combinations, max_lags_x):
-    # Turn into ndarray for vectorized ops
-    combos = np.asarray(combinations, dtype=object)
-    results = []
-
-    for combo in combos:
-        # Precompute the constant suffix for this combination
-        combo_str = str(tuple(combo))
-        # Vector of positions (skip the first element of combo)
-        positions = np.arange(combo.shape[0] - 1, dtype=int)
-        # The corresponding max lag for each position
-        lags_per_pos = np.asarray(combo[1:], dtype=int)
-
-        # For each position p, generate an array of strings "idx-p-(combo,...)"
-        parts = []
-        for p, max_lag in zip(positions, lags_per_pos):
-            base = (max_lags_x + 1) * p
-            # arange of numeric indices, then cast to string
-            idx_str = np.arange(base, base + max_lag + 1).astype(str)
-            # build suffix "-p-(combo,...)"
-            suffix = f"-{p}-{combo_str}"
-            # vectorized concat
-            parts.append(np.char.add(idx_str, suffix))
-
-        # concatenate all parts for this combo into one 1-D array
-        all_idx = np.concatenate(parts)
-        # convert back to Python list of strings
-        results.append(all_idx.tolist())
-
-    return results
-############################
-def _lags_index_single(combo, max_lags_x):
-    # Build the "tuple-string" suffix once
-    combo_str = str(tuple(combo))
-    # Positions correspond to combo[1:], so 0..len(combo)-2
-    positions = np.arange(combo.shape[0] - 1, dtype=int)
-    lags_per_pos = np.asarray(combo[1:], dtype=int)
-
-    parts = []
-    for p, max_lag in zip(positions, lags_per_pos):
-        base = (max_lags_x + 1) * p
-        # Numeric indices → strings
-        idx_str = np.arange(base, base + max_lag + 1).astype(str)
-        suffix = f"-{p}-{combo_str}"
-        # Vectorized concat in C
-        parts.append(np.char.add(idx_str, suffix))
-
-    # Flatten and return as Python list
-    return np.concatenate(parts).tolist()
-
-def lags_index_mt(combinations, max_lags_x, max_workers=None):
-    """
-    Compute lag indices for each combination in parallel threads.
-    
-    Args:
-      combinations : sequence of sequences (e.g. list of tuples/arrays)
-      max_lags_x    : int, same as before
-      max_workers   : int or None. Threads to use (defaults to os.cpu_count()).
-    
-    Returns:
-      List of lists, each inner list is the lag‐index strings for one combination.
-    """
-    # Ensure numpy array of objects so each combo is an array
-    combos = np.asarray(combinations, dtype=object)
-
-    results = [None] * combos.shape[0]
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        # Schedule one future per combo
-        futures = {
-            executor.submit(_lags_index_single, combos[i], max_lags_x): i
-            for i in range(combos.shape[0])
-        }
-        # As they complete, store back in results
-        for future in as_completed(futures):
-            idx = futures[future]
-            results[idx] = future.result()
-
-    return results
-#####################
 def optimal_lag_selection(data, max_lags_y, max_lags_x):
     # Get headers
     headers_list = data.columns
@@ -330,25 +206,38 @@ def optimal_lag_selection(data, max_lags_y, max_lags_x):
     lagged_matrix = np.hstack((lagged_matrix_y, lagged_matrix_x))
     
     lagged_headers = lagged_headers_y + lagged_headers_x 
+
+    # print ("### Saving lagged matrix""")
+    # pd.DataFrame(lagged_matrix).to_csv ("lagged_matrix.csv", header = lagged_headers)
     
-    print (pd.DataFrame(lagged_matrix, columns = lagged_headers))
+    # print ("### Lagged Matrix ###")
+    # print (pd.DataFrame(lagged_matrix, columns = lagged_headers))
        
     # Combinations of posible optimal lags        
-    combinations = lag_grid2(data.shape[1]-1, max_lags_y, max_lags_x)
+    combinations = lag_grid3(data.shape[1], max_lags_y, max_lags_x)
     
+    print ("### Lagged Matrix X ###")
+    print (pd.DataFrame(lagged_matrix_x))
+    
+    print ("### Combination ###")
     print (pd.DataFrame(combinations))
-    n = min (lagged_matrix.shape[0], lagged_matrix.shape[1])
-    for position, combination in enumerate (combinations):
-        if position == 0:
+    
+    
+    # for position, combination in enumerate (combinations):
+    #     results = lagged_matrix_x[:,combination]
+    #     if position == 200:
                 
-            # identity_matrix = np.zeros((n,n))
+    #         # identity_matrix = np.zeros((n,n))
             
-            # np.fill_diagonal (identity_matrix, combination)
+    #         # np.fill_diagonal (identity_matrix, combination)
             
-            # C = lagged_matrix @ identity_matrix
-            results = lagged_matrix[:,combination]
-            # print (pd.DataFrame(results))
-        
+    #         # C = lagged_matrix @ identity_matrix
+    #         # print (results)
+    #         print (pd.DataFrame(lagged_headers_x).iloc[combination,])
+    #         print (pd.DataFrame(results))
+    #     else:
+    #         continue
+        ##########
         
         
     
@@ -391,12 +280,18 @@ def optimal_lag_selection(data, max_lags_y, max_lags_x):
 #         # t12 = time.time()
 #         # t1n += t12-t11
 #     # print (t1n)
-        
+
+
+
+
+
 # ### Data Marco ###
 import os
 directory_path = os.path.abspath('')
 url = "https://github.com/marco-amh/codes/raw/refs/heads/master/Data.xlsx"
 df = pd.read_excel(url, sheet_name = 'Demanda_dinero', index_col = 0)
+
+# df.to_csv ("database_Demanda_dinero.csv")
 
 t1 = time.time()
 
