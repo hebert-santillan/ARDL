@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
-from pprint import pprint
+import time 
 
 def lag_grid(num_vars_x, max_lag_y, max_lag_x):
 
@@ -10,6 +10,8 @@ def lag_grid(num_vars_x, max_lag_y, max_lag_x):
     
     # Posible lags for x
     lags_x = [np.arange(0, max_lag_x + 1) for i in range(num_vars_x)]
+    
+    # Number of X combinations
     
     # Create lag grids for X variables
     grids = np.meshgrid(*lags_x, indexing='ij')
@@ -133,7 +135,6 @@ def optimal_lag_selection(data, max_lags_y, max_lags_x):
                 else:
                     reg_headers.append(header+"_lag" + str(lag))
         reg_matrix = reg_matrix[~np.isnan(reg_matrix).any(axis=1)]
-
         y = reg_matrix[:,0]
         x = reg_matrix[:,1:]
 
@@ -143,6 +144,7 @@ def optimal_lag_selection(data, max_lags_y, max_lags_x):
         M = reg_matrix.shape[1]
 
         AIC, BIC = criterium(N, M, SSE)
+        
         
         AIC_list.append(AIC)
         BIC_list.append(BIC)
@@ -189,3 +191,20 @@ df_1 = pd.read_csv(os.path.join(directory_path,csv_file_path))
 data_1 = df_1.copy()
 max_lags_y, max_lags_x = 4,4
 optimal_lag_selection(data_1, max_lags_y, max_lags_x)
+
+
+# ### Data Marco ###
+# import os
+# directory_path = os.path.abspath('')
+# url = "https://github.com/marco-amh/codes/raw/refs/heads/master/Data.xlsx"
+# df = pd.read_excel(url, sheet_name = 'Demanda_dinero', index_col = 0)
+
+# t1 = time.time()
+
+# data_2 = df.copy()
+# max_lags_y, max_lags_x = 4,4
+# print (optimal_lag_selection(data_2, max_lags_y, max_lags_x))
+
+# t2 = time.time()
+
+# print ("Tiempo de t2-t1: " + str(t2-t1))
