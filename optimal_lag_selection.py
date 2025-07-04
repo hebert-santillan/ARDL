@@ -2,9 +2,16 @@ import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 import time 
+from pprint import pprint
+
+# Clear memory
+import gc
+gc.collect()
 
 def lag_grid(num_vars_x, max_lag_y, max_lag_x):
-
+    """
+    Create a matrix of posible lags, returns a matrix wiht boolean values to index of lagged matrix [True, True, ...]
+    """
      # Posible lags for y
     lags_y = np.arange(1, max_lag_y + 1)
     
@@ -25,9 +32,31 @@ def lag_grid(num_vars_x, max_lag_y, max_lag_x):
         y_column = np.full((X_combinations.shape[0], 1), y_lag)
         combo = np.hstack([y_column, X_combinations])
         result.append(combo)
-    
+
     grid = np.vstack(result)
-    return grid
+
+
+    max_lag = max(max_lag_x, max_lag_y) + 1
+
+    # Matrix of posible lags
+    elements_y = np.array([[True]*lag + [False]*(max_lag_y+1-lag) for lag in range(1,max_lag_y+1+1)])
+    elements_x = np.array([[True]*lag + [False]*(max_lag_x+1-lag) for lag in range(1,max_lag_x+1+1)])
+
+    
+    y_grid = grid[:,0]
+    x_grid = grid[:,1:]
+    
+    combinations_y = elements_y[y_grid.reshape (1,-1)[0]].reshape(grid.shape[0],-1)        
+    combinations_x = elements_x[x_grid.reshape (1,-1)[0]].reshape(grid.shape[0],-1)        
+    
+    # All posible combinations, to boolean index of lagged matrix [True, True, ...]
+    combinations = np.concatenate([
+        combinations_y,
+        combinations_x]
+        , axis = 1)
+
+    
+    return combinations
 
 def criterium(N, M, SSE): 
     """
@@ -43,168 +72,198 @@ def criterium(N, M, SSE):
     BIC_a = (-2 * log_lik) + (M * np.log(N))
     BIC_b = np.log(SSE / N)+(M * np.log(N))
 
+    # Set to third option
     return ([AIC_b, BIC_b])
 
+def ols_model_sse(y, x): 
+    """
+    Fit an OLS model and return the SSE (not adjusted for degrees of freedom)
+    """
+    w = np.linalg.inv(x.T @ x) @ x.T @ y
+
+    y_pred = x @ w
+    
+    sse = np.sum((y - y_pred) ** 2)
+    
+    return (sse)
+   
 def ols_model(y, x): 
     """
-    Fit an OLS model and return the model along with the SSE (not adjusted for degrees of freedom)
+    Fit an OLS model and return the model (not adjusted for degrees of freedom)
     """
-    x = sm.add_constant(x)
     model = sm.OLS(y, x).fit()
 
     y_pred = model.predict(x)
     ehat = y - y_pred
     SSE = np.sum(ehat ** 2)
 
-    return [model, SSE]
+    return (model)
 
 def optimal_lag_selection(data, max_lags_y, max_lags_x):
-    
-    """
-    Return the optimal lag combination based on AIC and BIC criteria.
-    """
-    AIC_list = []
-    BIC_list = []
-    
-    reg_matrix_list = []
-    reg_headers_list = []
-    SSE_list = []
-            
-    # Combinations of posible optimal lags        
-    combinations = lag_grid(data.shape[1]-1,max_lags_y,max_lags_x)
-    
+    td1 = time.time() # Chronometer start
+
+    # Get headers
+    headers_list = data.columns
     
     # Convert data structure from DataFrame to matrix, gets matrix shape
     data_matrix = data.to_numpy()
-    n = data_matrix.shape [0]  
-    m = data_matrix.shape [1]
     
-    # header
-    headers = data.columns
+    # Divide data into y and x matrices
+    data_matrix_x = data_matrix[:,1:]
+    data_matrix_y = data_matrix[:,:1]
     
-    # lagged matrices
-    lagged_matrices = {}
-        
-    for pos, header in enumerate(headers): 
-        # getting data matrix 
-        data_values = data_matrix[:,pos]
-        data_values = data_values.flatten()
-                
-        # Lags of the y variable
-        if pos == 0:
-            # Creating an empty matrix
-            lagged_matrix = np.full((n, max_lags_y), np.nan)
-            
-            # Adding columns with lags from 1 to max_lags_y
-            for lag_y in range(max_lags_y):
-                lagged_matrix[(lag_y+1):, lag_y] = data_values[:n-(lag_y+1)]
-            
-        # lags in x variable
-        else:
-             # Creating an empty matrix
-            lagged_matrix = np.full((n, max_lags_x), np.nan)
-            
-            # Adding columns with lags from 0 to max_lags_x
-            for lag_x in range(max_lags_x):
-                lagged_matrix[(lag_x+1):, lag_x] = data_values[:n-(lag_x+1)]
-            
-        # Appending to non-lagged data
-        lagged_matrix = np.hstack((data_values.reshape(-1,1), lagged_matrix))
-        
-        # Saving matrix in dictionary
-        lagged_matrices[header] = lagged_matrix
-        
+
+    # Headers lagged y
+    lagged_headers_y = [
+    "{}_lag{}".format(headers_list[0], lag) 
+    for lag in range(0, max_lags_y + 1) 
     
-    for combination in combinations:
-        # name of columns
-        reg_headers = []
-        
-        # column number
-        n_columns = sum(combination) + m
+    ]
     
-        reg_matrix = np.full((n, n_columns), np.nan)
-                
-        i = 0
-        for pos, lags in enumerate(combination):
-            header = headers[pos]
-            for lag in range(lags+1):
-                reg_matrix[:,i] = lagged_matrices[header][:,lag]   
-                i+=1
-                if lag == 0:
-                    reg_headers.append(header)
-                else:
-                    reg_headers.append(header+"_lag" + str(lag))
+    # Lagging y matrix
+    n, m = data_matrix_y.shape
+    lagged_list_y = [
+        np.vstack((
+            np.full((lag, m), np.nan),
+            data_matrix_y[:-lag]
+        )) if lag > 0 else data_matrix_y  # lag = 0 = matriz original
+        for lag in range(0, max_lags_y + 1)
+    ]
+    
+    # Headers lagged x
+    lagged_headers_x = [
+    "{}_lag{}".format(i, lag) 
+    for i in headers_list[1:]
+    for lag in range(0, max_lags_x + 1)
+    ]
+
+    n, m = data_matrix_x.shape
+    
+    # Lagging x matrix
+    lagged_list_x = [
+        [
+            np.vstack((
+                np.full((lag, 1), np.nan),
+                data_matrix_x[:-lag, i].reshape(-1, 1)
+            )) if lag > 0 else data_matrix_x[:, i].reshape(-1, 1)
+            for lag in range(0, max_lags_x + 1)  # lag 0 first
+        ]
+        for i in range(m)
+    ]
+    
+    # Combine into a single matrix (lag 0 → lag N)
+    lagged_matrix_x = np.hstack([
+        np.hstack(n) for n in lagged_list_x
+    ])
+
+    lagged_matrix_y = np.hstack(lagged_list_y)
+  
+    lagged_matrix = np.hstack((lagged_matrix_y, lagged_matrix_x))
+    lagged_headers = lagged_headers_y + lagged_headers_x 
+            
+    # Create combinations of posible optimal lags        
+    combinations = lag_grid (data.shape[1]-1,max_lags_y,max_lags_x)
+    print("Number of models evaluated: " + str(len(combinations)))
+    
+    
+    AIC_list = []
+    BIC_list = []
+    
+    # Evaluate each combination of posible optimal lags
+    td2 = time.time() # Chronometer end 
+    print ("---- Chronometer (for calculating combinations): " + str(td2-td1)+" ----")
+
+    ts1 = time.time() # Chronometer start 
+    for position, combination in enumerate (combinations):
+        # Index columns of lagged values
+        reg_matrix = lagged_matrix[:,combination]
         reg_matrix = reg_matrix[~np.isnan(reg_matrix).any(axis=1)]
-        y = reg_matrix[:,0]
-        x = reg_matrix[:,1:]
-
-        model, SSE = ols_model(y, x)
-
+        
+        # count
+        if position % 100000 == 0:
+            print ("---- " + str(int(position)) + " models evaluated ----")
+        
+        # Calculate SSE
+        sse = ols_model_sse(
+            reg_matrix[:,0],  # Y value
+            reg_matrix[:,1:]) # X values
         N = reg_matrix.shape[0]
         M = reg_matrix.shape[1]
-
-        AIC, BIC = criterium(N, M, SSE)
-        
+    
+        # Evaluate based on the AIC and BIC
+        AIC, BIC = criterium(N, M, sse)
         
         AIC_list.append(AIC)
         BIC_list.append(BIC)
-        reg_matrix_list.append(reg_matrix)
-        reg_headers_list.append(reg_headers)
-        SSE_list.append(SSE)
+        
+    print ("---- All " + str(len(combinations)) + " models have been evaluated ----")
+    ts2 = time.time() # Chronometer end 
+    print ("---- Chronometer (for evaluating models): " + str(ts2-ts1)+" ----\n")
 
     AIC_opt = AIC_list.index(min(AIC_list))
     BIC_opt = BIC_list.index(min(BIC_list))
-    reg_matrix_opt_AIC = reg_matrix_list[AIC_opt]
-    reg_matrix_opt_BIC = reg_matrix_list[BIC_opt]
     
-    print("Number of models evaluated:" + str(len(combinations)))
-    # Print AIC results
+    combination_AIC_int = [int(x) for x in combinations[AIC_opt]]
+    combination_AIC_lst = [sum(combination_AIC_int[:max_lags_y+1])-1] + [sum (x)-1 for x in np.array(combination_AIC_int[max_lags_y+1:]).reshape(-1,max_lags_x+1)]
+
+    combination_BIC_int = [int(x) for x in combinations[BIC_opt]]
+    combination_BIC_lst = [sum(combination_BIC_int[:max_lags_y+1])-1] + [sum (x)-1 for x in np.array(combination_BIC_int[max_lags_y+1:]).reshape(-1,max_lags_x+1)]
+        
     print("########## AIC ##########")
-    print("Optimal lags (AIC): " + str([combinations[AIC_opt]]))
-    print("SSE: " + str(SSE_list[AIC_opt]))
-    print("AIC: " + str(AIC_list[AIC_opt]))
+    print("Optimal lags (AIC): " + str(combination_AIC_lst))
     
+    reg_matrix_AIC = lagged_matrix[:,combinations[AIC_opt]]
+    reg_matrix_AIC = reg_matrix_AIC[~np.isnan(reg_matrix_AIC).any(axis=1)]
     
-    df_AIC_opt = pd.DataFrame(reg_matrix_opt_AIC, columns = reg_headers_list[AIC_opt])
-    print (ols_model(df_AIC_opt.iloc[:,0], df_AIC_opt.iloc[:,1:])[0].summary())
+    columns = np.array(lagged_headers)[combinations[AIC_opt]]
+    df_AIC_opt = pd.DataFrame(
+        reg_matrix_AIC, columns=columns)
+
+    # Calculate Full Model
+    model_AIC = ols_model(
+        df_AIC_opt.iloc[:,0],  # Y value
+        df_AIC_opt.iloc[:,1:]) # X values
+    N = df_AIC_opt.shape[0]
+    M = df_AIC_opt.shape[1]
+    
+    print (model_AIC.summary())
+   
     
     # Print BIC results
-    print("########## BIC ##########")
-    print("Optimal lags (BIC): " + str([combinations[BIC_opt]]))
-    print("SSE: " + str(SSE_list[AIC_opt]))
-    print("BIC: " + str(BIC_list[BIC_opt]))
+    print("\n########## BIC ##########")
+    print("Optimal lags (BIC): " + str(combination_BIC_lst))
     
-    df_BIC_opt = pd.DataFrame(reg_matrix_opt_BIC, columns = reg_headers_list[BIC_opt])
-    print (ols_model(df_BIC_opt.iloc[:,0], df_BIC_opt.iloc[:,1:])[0].summary())
+    reg_matrix_BIC = lagged_matrix[:,combinations[BIC_opt]]
+    reg_matrix_BIC = reg_matrix_BIC[~np.isnan(reg_matrix_BIC).any(axis=1)]
     
-    # Returns arrays of optimal lags [AIC, BIC]
-    return [combinations[AIC_opt], combinations[BIC_opt]]
+    columns = np.array(lagged_headers)[combinations[BIC_opt]]
+    df_BIC_opt = pd.DataFrame(
+        reg_matrix_BIC, columns=columns)
+
+    # Calculate Full Model
+    model_BIC = ols_model(
+        df_BIC_opt.iloc[:,0],  # Y value
+        df_BIC_opt.iloc[:,1:]) # X values
+    N = df_BIC_opt.shape[0]
+    M = df_BIC_opt.shape[1]
+    
+    print (model_BIC.summary())
+    
+    return [combination_AIC_lst, combination_BIC_lst]
 
 ### Example ###
 import os
 directory_path = os.path.abspath('')
-# Import data sample 1
-csv_file_path = "sample.csv"
-df_1 = pd.read_csv(os.path.join(directory_path,csv_file_path))
+url = "https://github.com/marco-amh/codes/raw/refs/heads/master/Data.xlsx"
+df = pd.read_excel(url, sheet_name = 'Demanda_dinero', index_col = 0)
 
+t1 = time.time()
 
-data_1 = df_1.copy()
-max_lags_y, max_lags_x = 4,4
-optimal_lag_selection(data_1, max_lags_y, max_lags_x)
+data_2 = df.copy()
+max_lags_y, max_lags_x = 5, 5
+results = optimal_lag_selection(data_2, max_lags_y, max_lags_x)
 
+t2 = time.time()
 
-# ### Data Marco ###
-# import os
-# directory_path = os.path.abspath('')
-# url = "https://github.com/marco-amh/codes/raw/refs/heads/master/Data.xlsx"
-# df = pd.read_excel(url, sheet_name = 'Demanda_dinero', index_col = 0)
-
-# t1 = time.time()
-
-# data_2 = df.copy()
-# max_lags_y, max_lags_x = 4,4
-# print (optimal_lag_selection(data_2, max_lags_y, max_lags_x))
-
-# t2 = time.time()
-
-# print ("Tiempo de t2-t1: " + str(t2-t1))
+print ("\n---- Chronometer (Total time): " + str(t2-t1)+" ----")
+print (results)
