@@ -23,3 +23,4 @@ The algorithm was developed and tested using the following versions:
 
 ## Output
 - Array with optimal selection using the AIC and BIC.
+- Additional details on the model for both optimal AIC and BIC
