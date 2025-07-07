@@ -4,6 +4,29 @@ import statsmodels.api as sm
 import time 
 from pprint import pprint
 
+"""
+This repository provides a Python implementation of an algorithm for
+automatic lag selection in Autoregressive Distributed Lag (ARDL) models.
+The tool evaluates all possible combination of lag selection and returns
+the optimal lag selection with AIC and BIC. The tool is designed to assist
+on research in identifying the optimal lag structure for ARDL models,
+facilitating time series analysis and econometric modeling.
+
+1. Create matrix of original values and lagged values:
+    y_lag0, y_lag1, ..., y_lag(n), x1_lag0 ...
+    
+2. Create index of all posible combinations
+
+3. Index lagged matrix and evaluates each combination of lags
+
+4. Print summary of optimal lags
+
+5. Return array of optimal lag selection
+
+"""
+
+
+
 # Clear memory
 import gc
 gc.collect()
@@ -99,10 +122,12 @@ def ols_model(y, x):
 
     return (model)
 
-def optimal_lag_selection(data, max_lags_y, max_lags_x):
+def optimal_lag_selection(data, max_lags_y, max_lags_x):    
+    ### 1 ###
+    
+    # Get headers
     td1 = time.time() # Chronometer start
 
-    # Get headers
     headers_list = data.columns
     
     # Convert data structure from DataFrame to matrix, gets matrix shape
@@ -151,7 +176,7 @@ def optimal_lag_selection(data, max_lags_y, max_lags_x):
         for i in range(m)
     ]
     
-    # Combine into a single matrix (lag 0 → lag N)
+    # Combine into a single matrix (lag 0 -> lag N)
     lagged_matrix_x = np.hstack([
         np.hstack(n) for n in lagged_list_x
     ])
@@ -160,11 +185,13 @@ def optimal_lag_selection(data, max_lags_y, max_lags_x):
   
     lagged_matrix = np.hstack((lagged_matrix_y, lagged_matrix_x))
     lagged_headers = lagged_headers_y + lagged_headers_x 
-            
+    
+    ### 2 ###
     # Create combinations of posible optimal lags        
     combinations = lag_grid (data.shape[1]-1,max_lags_y,max_lags_x)
     print("Number of models evaluated: " + str(len(combinations)))
     
+    ### 3 ###
     
     AIC_list = []
     BIC_list = []
@@ -172,17 +199,24 @@ def optimal_lag_selection(data, max_lags_y, max_lags_x):
     # Evaluate each combination of posible optimal lags
     td2 = time.time() # Chronometer end 
     print ("---- Chronometer (for calculating combinations): " + str(td2-td1)+" ----")
+    
+    ts1 = 0 # Chronometer start 
+    tr1 = 0 # Chronometer start 
 
-    ts1 = time.time() # Chronometer start 
     for position, combination in enumerate (combinations):
         # Index columns of lagged values
+        ts2 = time.time()
+
         reg_matrix = lagged_matrix[:,combination]
         reg_matrix = reg_matrix[~np.isnan(reg_matrix).any(axis=1)]
         
+        ts3 = time.time()
         # count
         if position % 100000 == 0:
             print ("---- " + str(int(position)) + " models evaluated ----")
         
+        tr2 = time.time()
+
         # Calculate SSE
         sse = ols_model_sse(
             reg_matrix[:,0],  # Y value
@@ -193,13 +227,20 @@ def optimal_lag_selection(data, max_lags_y, max_lags_x):
         # Evaluate based on the AIC and BIC
         AIC, BIC = criterium(N, M, sse)
         
-        AIC_list.append(AIC)
+        AIC_list.append(AIC)|
         BIC_list.append(BIC)
-        
-    print ("---- All " + str(len(combinations)) + " models have been evaluated ----")
-    ts2 = time.time() # Chronometer end 
-    print ("---- Chronometer (for evaluating models): " + str(ts2-ts1)+" ----\n")
 
+        tr3 = time.time()
+
+        tr1 += tr3 - tr2
+        ts1 += ts3 - ts2
+
+    print ("---- All " + str(len(combinations)) + " models have been evaluated ----")
+    print ("---- Chronometer (for indexing models): " + str(ts1)+" ----\n")
+    print ("---- Chronometer (for evaluating models): " + str(tr1)+" ----\n")
+
+    ### 4 ###
+    
     AIC_opt = AIC_list.index(min(AIC_list))
     BIC_opt = BIC_list.index(min(BIC_list))
     
@@ -249,6 +290,9 @@ def optimal_lag_selection(data, max_lags_y, max_lags_x):
     
     print (model_BIC.summary())
     
+    
+    ### 5 ###
+    
     return [combination_AIC_lst, combination_BIC_lst]
 
 ### Example ###
@@ -260,7 +304,7 @@ df = pd.read_excel(url, sheet_name = 'Demanda_dinero', index_col = 0)
 t1 = time.time()
 
 data_2 = df.copy()
-max_lags_y, max_lags_x = 5, 5
+max_lags_y, max_lags_x = 5, 5 
 results = optimal_lag_selection(data_2, max_lags_y, max_lags_x)
 
 t2 = time.time()
